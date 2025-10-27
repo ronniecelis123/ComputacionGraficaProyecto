@@ -135,10 +135,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="bandera.frag" />
+    <None Include="bandera.vs" />
     <None Include="Shader\lamp.frag" />
     <None Include="Shader\lamp.vs" />
     <None Include="Shader\lighting.frag" />
     <None Include="Shader\lighting.vs" />
+    <None Include="Shader\skybox_esfera.frag" />
+    <None Include="Shader\skybox_esfera.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
