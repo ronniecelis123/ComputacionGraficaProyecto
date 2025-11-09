@@ -42,6 +42,9 @@
     <None Include="Shader\skybox_esfera.vs">
       <Filter>Archivos de origen\Shader</Filter>
     </None>
+    <None Include="animated.vs">
+      <Filter>Archivos de origen\Shader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -49,6 +52,9 @@
     </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="animator.h">
+      <Filter>Archivos de origen\Shader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
