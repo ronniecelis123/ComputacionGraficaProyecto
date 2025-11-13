@@ -135,7 +135,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="animated.vs" />
     <None Include="bandera.frag" />
     <None Include="bandera.vs" />
     <None Include="Shader\lamp.frag" />
@@ -146,12 +145,11 @@
     <None Include="Shader\skybox_esfera.vs" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="animator.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Carga de Modelos.cpp" />
+    <ClCompile Include="ProyectoComputacionGrafica.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
