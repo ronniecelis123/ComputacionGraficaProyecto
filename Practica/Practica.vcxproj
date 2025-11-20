@@ -143,9 +143,13 @@
     <None Include="Shader\lighting.vs" />
     <None Include="Shader\skybox_esfera.frag" />
     <None Include="Shader\skybox_esfera.vs" />
+    <None Include="_skin_runtime.vs" />
+    <None Include="_tex_runtime.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>

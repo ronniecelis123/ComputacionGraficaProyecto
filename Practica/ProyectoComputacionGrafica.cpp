@@ -5,7 +5,7 @@
 * 319148204
 * Proyecto Final de laboratorio
 * Fecha de entrega: 12 de octubre de 2025.
-* 
+*
 */
 
 #include <iostream>
@@ -32,6 +32,10 @@ void DoMovement();
 void UpdateCharacter();
 void UpdateCaballero();
 void KnightInterpolation();
+void UpdateHoja();              // actualización de todas las hojas
+void ButterflyInterpolation(void);
+void AnimateButterflyKeyframes(void);
+void UpdateButterflyFlight(void);
 GLuint loadTexture(const char* path);
 
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -62,6 +66,7 @@ const float MIN_LOCAL_INTENSITY = 0.1f;
 GLuint g_SkyTextureDay;
 
 static inline glm::vec3 FromBlender(const glm::vec3& b) {
+    // Blender (x, y, z)  ->  OpenGL (x, z, -y)
     return glm::vec3(b.x, b.z, -b.y);
 }
 
@@ -123,6 +128,54 @@ static void InitConvertedLights() {
         gSpotColor[i] = kBlenderSpots[i].color;
     }
 }
+
+// ========== MARIPOSA - KEYFRAMES AUTOMÁTICOS ==========
+float butterflyPosX = 0.0f;  // Se calculará automáticamente
+float butterflyPosY = 0.0f;  // Se calculará automáticamente
+float butterflyPosZ = 0.0f;  // Se calculará automáticamente
+float butterflyRotY = 0.0f;  // Se calculará automáticamente
+float wingRightAngle = 0.0f;
+float wingLeftAngle = 0.0f;
+
+#define BUTTERFLY_MAX_FRAMES 3
+int butterfly_max_steps = 2;
+int butterfly_curr_steps = 0;
+int butterflyPlayIndex = 0;
+
+typedef struct _butterflyFrame {
+    float wingRight;
+    float wingRightInc;
+    float wingLeft;
+    float wingLeftInc;
+} BUTTERFLY_FRAME;
+
+BUTTERFLY_FRAME ButterflyKeyFrame[BUTTERFLY_MAX_FRAMES];
+// ======================================================
+
+
+// ========== ANIMACIÓN DE VUELO COMPLEJA (AUTOMÁTICO) ==========
+float butterflyFlightTime = 0.0f;
+const float FLIGHT_SPEED = 0.8f;
+const float FLIGHT_SCALE = 8.0f;
+const glm::vec3 FLIGHT_CENTER(25.0f, 7.8f, 0.0f);
+float butterflyRotX = 0.0f;  // Pitch (inclinación arriba/abajo)
+float butterflyRotZ = 0.0f;  // Roll (inclinación lateral)
+// ==================================================================
+
+// ========== ANIMACIÓN COMPLEJA DEL POSTER ==========
+float posterAnimTime = 0.0f;
+const float POSTER_CYCLE_DURATION = 30.0f;
+const float POSTER_DETACH_TIME = 2.0f;
+
+glm::vec3 posterOriginalPos = glm::vec3(0.0f, 5.0f, 0.0f);
+glm::vec3 posterOriginalRot = glm::vec3(0.0f, 0.0f, 0.0f);
+
+glm::vec3 posterCurrentPos = posterOriginalPos;
+glm::vec3 posterCurrentRot = posterOriginalRot;
+
+float posterWindPhase = 0.0f;
+bool posterIsFlying = false;
+float posterNextWindTime = 0.0f;
 
 const float CHARACTER_SCALE = 4.569f;
 
@@ -244,6 +297,142 @@ int   g_KnightPlayIndex = 0;
 int   g_KnightCurrSteps = 0;
 bool  g_KnightPlay = true;
 
+// ===================================
+//  MARIPOSA - INTERPOLACIÓN
+// ===================================
+void ButterflyInterpolation(void) {
+    int current = butterflyPlayIndex;
+    int next = (butterflyPlayIndex + 1) % BUTTERFLY_MAX_FRAMES;
+
+    ButterflyKeyFrame[current].wingRightInc =
+        (ButterflyKeyFrame[next].wingRight - ButterflyKeyFrame[current].wingRight) / butterfly_max_steps;
+
+    // Ya no necesitamos calcular wingLeftInc porque ambas alas usan wingRightAngle
+    ButterflyKeyFrame[current].wingLeftInc = ButterflyKeyFrame[current].wingRightInc;  // ← COPIA el mismo valor
+}
+
+
+// ===================================
+//  MARIPOSA - ANIMACIÓN AUTOMÁTICA
+// ===================================
+void AnimateButterflyKeyframes(void) {
+    if (butterfly_curr_steps >= butterfly_max_steps) {
+        butterfly_curr_steps = 0;
+        butterflyPlayIndex = (butterflyPlayIndex + 1) % BUTTERFLY_MAX_FRAMES;
+        ButterflyInterpolation();
+    }
+
+    // Solo actualizar wingRightAngle (ambas alas lo usan)
+    wingRightAngle += ButterflyKeyFrame[butterflyPlayIndex].wingRightInc;
+    wingLeftAngle = wingRightAngle;  // ← SINCRONIZAR: siempre iguales
+    butterfly_curr_steps++;
+}
+
+// ===================================
+//  MARIPOSA - VUELO COMPLEJO
+// ===================================
+void UpdateButterflyFlight() {
+    // Incrementar tiempo con velocidad variable
+    float speedVariation = 1.0f + 0.3f * sin(butterflyFlightTime * 0.5f);
+    butterflyFlightTime += deltaTime * FLIGHT_SPEED * speedVariation;
+
+    float t = butterflyFlightTime;
+
+    // ========== TRAYECTORIA 3D: LEMNISCATA ESPACIAL ==========
+    // Ecuación paramétrica de lemniscata modificada para 3D
+    float sinT = sin(t);
+    float cosT = cos(t);
+    float sin2T = sin(2.0f * t);
+    float cos2T = cos(2.0f * t);
+
+    // Componente horizontal (forma de infinito)
+    float denominator = 1.0f + sinT * sinT;
+    float x = FLIGHT_SCALE * cosT / denominator;
+    float z = FLIGHT_SCALE * sinT * cosT / denominator;
+
+    // ========== MOVIMIENTO VERTICAL COMPLEJO ==========
+    // Combinar múltiples frecuencias para movimiento orgánico
+    float y1 = 3.0f * sin(t);                    // Onda principal
+    float y2 = 1.5f * sin(t * 2.3f);             // Onda secundaria
+    float y3 = 0.8f * sin(t * 4.7f);             // Vibración rápida
+    float y = y1 + y2 + y3;                       // Suma de ondas
+
+    // ========== ESPIRAL ASCENDENTE (OPCIONAL) ==========
+    // Agregar componente de espiral que sube gradualmente
+    float spiralY = 0.1f * t;  // Sube lentamente con el tiempo
+    y += spiralY;
+
+    // Resetear altura cada cierto tiempo para mantenerla controlada
+    if (t > 60.0f) {  // Cada 60 segundos aprox
+        butterflyFlightTime = fmod(butterflyFlightTime, 60.0f);
+    }
+
+    // ========== ACTUALIZAR POSICIÓN ==========
+    butterflyPosX = FLIGHT_CENTER.x + x;
+    butterflyPosY = FLIGHT_CENTER.y + y;
+    butterflyPosZ = FLIGHT_CENTER.z + z;
+
+    // ========== CALCULAR ROTACIONES COMPLEJAS ==========
+
+    // 1. YAW (Rotación horizontal Y) - hacia donde mira horizontalmente
+    float dx = -FLIGHT_SCALE * (sinT * denominator + 2.0f * cosT * sinT * sinT) /
+        (denominator * denominator);
+    float dz = FLIGHT_SCALE * (cos2T - sinT * sinT) / denominator;
+    butterflyRotY = atan2(dx, dz) * 180.0f / 3.14159f;
+
+    // 2. PITCH (Rotación X) - inclinación arriba/abajo según dirección vertical
+    float dy = 3.0f * cosT + 1.5f * 2.3f * cos(t * 2.3f) + 0.8f * 4.7f * cos(t * 4.7f);
+    float horizontalSpeed = sqrt(dx * dx + dz * dz);
+    butterflyRotX = atan2(dy, horizontalSpeed) * 180.0f / 3.14159f;
+
+    // 3. ROLL (Rotación Z) - inclinación lateral durante giros
+    // Más roll cuando gira bruscamente
+    float curvature = dx * dz;  // Medida de curvatura
+    butterflyRotZ = curvature * 5.0f;  // Ajustar multiplicador para más/menos roll
+
+    // Limitar ángulos para que no sean extremos
+    butterflyRotX = glm::clamp(butterflyRotX, -30.0f, 30.0f);
+    butterflyRotZ = glm::clamp(butterflyRotZ, -25.0f, 25.0f);
+}
+
+
+// ========================= HOJAS (LEAVES) =========================
+
+// Posición base de la hoja en Blender: (81.5649, 68.9566, -3.99325)
+// Se convierte a OpenGL con FromBlender(x, y, z) = (x, z, -y)
+const glm::vec3 kLeafPosBlender(81.5649f, 68.9566f, -3.99325f);
+const glm::vec3 g_LeafBaseStartPosGL = FromBlender(kLeafPosBlender);
+
+// Varias hojas cerca de la posición base
+const int NUM_LEAVES = 5;
+
+struct LeafInstance {
+    glm::vec3 startPos;      // posición inicial (cerca del árbol)
+    glm::vec3 pos;           // posición actual animada
+    float     rotationAngle; // rotación actual
+    float     fallTime;      // tiempo de caída desde que empezó a caer
+    float     phase;         // desfase para balanceo/rotación
+    float     startDelay;    // tiempo global a partir del cual la hoja comienza a caer
+};
+
+LeafInstance g_Leaves[NUM_LEAVES];
+
+// Parámetros compartidos de la animación de caída
+const float g_LeafFallSpeed = 3.5f;   // velocidad de caída
+const float g_LeafOscAmpX = 1.5f;   // amplitud de oscilación en X
+const float g_LeafOscAmpZ = 0.8f;   // amplitud en Z
+const float g_LeafOscFreq = 1.5f;   // frecuencia de balanceo
+const float g_LeafMaxFallDist = 25.0f;  // distancia de caída antes de reiniciar
+const float g_LeafRotAmp = 35.0f;  // amplitud de rotación en grados
+const float g_LeafScale = 1.0f;   // escala de la hoja
+
+// tiempo global para controlar cuándo inicia cada hoja
+float g_LeafGlobalTime = 0.0f;
+
+// intervalo base entre el inicio de una hoja y la siguiente
+const float g_LeafStartInterval = 0.8f;
+// =================================================================
+
 int main() {
     if (!glfwInit()) { return EXIT_FAILURE; }
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo 9. Ronie Celis", nullptr, nullptr);
@@ -288,7 +477,12 @@ int main() {
     Model BrazoEscudo((char*)"Models/caballero/brazoEscudo.obj");
     Model BrazoEspada((char*)"Models/caballero/brazoEspada.obj");
 
-    Model danceModel((char*)"dance/dance.fbx");
+    Model butterfly((char*)"Models/CuerpoButterfly.obj");
+    Model wingrightbutterfly((char*)"Models/AlaDerButterfly.obj");
+    Model wingleftbutterfly((char*)"Models/AlaIzqButterfly.obj");
+
+    // Modelo de la hoja
+    Model Hoja((char*)"Models/hoja.obj");
 
     g_KnightFrameCount = 9;
 
@@ -347,6 +541,74 @@ int main() {
         600.0f
     );
 
+    {
+        // ========== KEYFRAMES DE LA MARIPOSA ==========
+        // Frame 0: Alas en posición inicial
+        ButterflyKeyFrame[0].wingRight = 5.0f;
+        ButterflyKeyFrame[0].wingLeft = 5.0f;
+
+        // Frame 1: Alas neutras
+        ButterflyKeyFrame[1].wingRight = 0.0f;
+        ButterflyKeyFrame[1].wingLeft = 0.0f;
+
+        // Frame 2: Alas abajo
+        ButterflyKeyFrame[2].wingRight = -5.0f;
+        ButterflyKeyFrame[2].wingLeft = -5.0f;
+
+        // Frame 3: Alas neutras (subiendo)
+        ButterflyKeyFrame[3].wingRight = 0.0f;
+        ButterflyKeyFrame[3].wingLeft = 0.0f;
+
+        // Frame 4: Alas arriba (cierra el ciclo)
+        ButterflyKeyFrame[4].wingRight = 5.0f;
+        ButterflyKeyFrame[4].wingLeft = 5.0f;
+
+        // Inicializar con el primer frame
+        wingRightAngle = ButterflyKeyFrame[0].wingRight;
+        wingLeftAngle = ButterflyKeyFrame[0].wingLeft;
+
+        // Calcular primera interpolación
+        ButterflyInterpolation();
+        // ============================================================
+    }
+
+    // --------- Inicialización de las hojas alrededor de la principal ---------
+    {
+        glm::vec3 base = g_LeafBaseStartPosGL;
+
+        // Hoja 0 (la principal)
+        g_Leaves[0].startPos = base + glm::vec3(0.0f, 0.0f, 0.0f);
+        g_Leaves[0].phase = 0.0f;
+        g_Leaves[0].startDelay = 0.0f;  // empieza inmediatamente
+
+        // Hoja 1
+        g_Leaves[1].startPos = base + glm::vec3(0.8f, 0.6f, -0.5f);
+        g_Leaves[1].phase = 0.5f;
+        g_Leaves[1].startDelay = g_LeafStartInterval * 1.0f;
+
+        // Hoja 2
+        g_Leaves[2].startPos = base + glm::vec3(-0.7f, -0.4f, 0.3f);
+        g_Leaves[2].phase = 1.0f;
+        g_Leaves[2].startDelay = g_LeafStartInterval * 2.0f;
+
+        // Hoja 3
+        g_Leaves[3].startPos = base + glm::vec3(0.4f, 0.2f, 0.7f);
+        g_Leaves[3].phase = 1.5f;
+        g_Leaves[3].startDelay = g_LeafStartInterval * 3.0f;
+
+        // Hoja 4
+        g_Leaves[4].startPos = base + glm::vec3(-0.5f, 0.3f, -0.6f);
+        g_Leaves[4].phase = 2.2f;
+        g_Leaves[4].startDelay = g_LeafStartInterval * 4.0f;
+
+        for (int i = 0; i < NUM_LEAVES; ++i) {
+            g_Leaves[i].pos = g_Leaves[i].startPos;
+            g_Leaves[i].rotationAngle = 0.0f;
+            g_Leaves[i].fallTime = 0.0f;
+        }
+    }
+    // -------------------------------------------------------------------------
+
     while (!glfwWindowShouldClose(window)) {
         GLfloat currentFrame = (GLfloat)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -356,6 +618,9 @@ int main() {
         DoMovement();
         UpdateCharacter();
         UpdateCaballero();
+        UpdateHoja();    // actualizamos TODAS las hojas cada frame
+        AnimateButterflyKeyframes();
+        UpdateButterflyFlight();
 
         glClearColor(0.12f, 0.12f, 0.13f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -514,6 +779,7 @@ int main() {
         museo.Draw(lightingShader);
         astaBandera.Draw(lightingShader);
 
+        // ====================== DIBUJAR PERSONA ======================
         {
             glm::mat4 base = glm::mat4(1.0f);
             base = glm::translate(base, characterPos);
@@ -583,6 +849,7 @@ int main() {
             Brazo2.Draw(lightingShader);
         }
 
+        // ==================== DIBUJAR CABALLERO =====================
         {
             glm::mat4 base = glm::mat4(1.0f);
 
@@ -621,6 +888,69 @@ int main() {
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(espadaModel));
             BrazoEspada.Draw(lightingShader);
         }
+
+        {
+            // ========== MARIPOSA CON VUELO COMPLEJO ==========
+            // Cuerpo de la mariposa con rotaciones complejas
+            model = glm::mat4(1);
+            model = glm::translate(model, glm::vec3(butterflyPosX, butterflyPosY, butterflyPosZ));
+
+            // Aplicar rotaciones en orden: Y (yaw) -> X (pitch) -> Z (roll)
+            model = glm::rotate(model, glm::radians(butterflyRotY), glm::vec3(0.0f, 1.0f, 0.0f));  // Yaw
+            model = glm::rotate(model, glm::radians(butterflyRotX), glm::vec3(1.0f, 0.0f, 0.0f));  // Pitch
+            model = glm::rotate(model, glm::radians(butterflyRotZ), glm::vec3(0.0f, 0.0f, 1.0f));  // Roll
+
+            model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+
+            // Guardar matriz del cuerpo como base
+            glm::mat4 butterflyBodyMatrix = model;
+
+            GLint modelLocButterfly = glGetUniformLocation(lightingShader.Program, "model");
+            glUniformMatrix4fv(modelLocButterfly, 1, GL_FALSE, glm::value_ptr(model));
+            butterfly.Draw(lightingShader);
+
+            // ========== ALA DERECHA(bisagra - sube y baja) ==========
+            glm::mat4 modelTempWingR = butterflyBodyMatrix;
+            modelTempWingR = glm::translate(modelTempWingR, glm::vec3(11.0f, 1.7f, 2.5f));
+            modelTempWingR = glm::rotate(modelTempWingR, glm::radians(wingRightAngle), glm::vec3(1.0f, 0.0f, 0.0f));
+            //                                                         ↑ usa wingRightAngle
+            glUniformMatrix4fv(modelLocButterfly, 1, GL_FALSE, glm::value_ptr(modelTempWingR));
+            wingrightbutterfly.Draw(lightingShader);
+
+            // ========== ALA IZQUIERDA (usa el MISMO ángulo que la derecha) ==========
+            glm::mat4 modelTempWingL = butterflyBodyMatrix;
+            modelTempWingL = glm::translate(modelTempWingL, glm::vec3(9.6f, -1.0f, 0.0f));
+            modelTempWingL = glm::rotate(modelTempWingL, glm::radians(wingRightAngle), glm::vec3(1.0f, 0.0f, 0.0f));
+            //                                                         ↑ CAMBIO: ahora usa wingRightAngle (igual que la derecha)
+            glUniformMatrix4fv(modelLocButterfly, 1, GL_FALSE, glm::value_ptr(modelTempWingL));
+            wingleftbutterfly.Draw(lightingShader);
+        }
+
+
+
+        // ===================== DIBUJAR HOJAS =========================
+        {
+            for (int i = 0; i < NUM_LEAVES; ++i) {
+                glm::mat4 hojaModel = glm::mat4(1.0f);
+
+                // Posición animada de cada hoja
+                hojaModel = glm::translate(hojaModel, g_Leaves[i].pos);
+
+                // Rotación para que la hoja gire un poco mientras cae
+                hojaModel = glm::rotate(
+                    hojaModel,
+                    glm::radians(g_Leaves[i].rotationAngle),
+                    glm::vec3(0.0f, 1.0f, 0.0f)
+                );
+
+                // Escala de la hoja
+                hojaModel = glm::scale(hojaModel, glm::vec3(g_LeafScale));
+
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(hojaModel));
+                Hoja.Draw(lightingShader);
+            }
+        }
+        // ============================================================
 
         flagShader.Use();
         glUniform1f(glGetUniformLocation(flagShader.Program, "time"), currentFrame);
@@ -850,6 +1180,81 @@ void UpdateCharacter() {
         break;
     }
 }
+
+// ======================= UPDATE DE LAS HOJAS ======================
+void UpdateHoja() {
+    // Tiempo global de la animación de hojas
+    g_LeafGlobalTime += deltaTime;
+
+    for (int i = 0; i < NUM_LEAVES; ++i) {
+        LeafInstance& leaf = g_Leaves[i];
+
+        // Mientras no llegue su tiempo de inicio, la hoja no cae
+        if (g_LeafGlobalTime < leaf.startDelay) {
+            // Opcional: ligero movimiento en la rama
+            float idleT = g_LeafGlobalTime + leaf.phase;
+            float swayX = std::sin(idleT * g_LeafOscFreq) * 0.2f;
+            float swayZ = std::cos(idleT * g_LeafOscFreq * 0.7f) * 0.1f;
+
+            leaf.pos = glm::vec3(
+                leaf.startPos.x + swayX,
+                leaf.startPos.y,
+                leaf.startPos.z + swayZ
+            );
+            leaf.rotationAngle = std::sin(idleT * 1.5f) * 10.0f;
+            continue;
+        }
+
+        // La hoja ya puede caer
+        leaf.fallTime += deltaTime;
+
+        // Tiempo animado con fase
+        float animT = leaf.fallTime + leaf.phase;
+
+        // Distancia de caída desde el inicio
+        float fallDist = g_LeafFallSpeed * leaf.fallTime;
+
+        // Altura actual
+        float currentY = leaf.startPos.y - fallDist;
+
+        // Y mínimo al que llega la hoja antes de reiniciar
+        float minY = leaf.startPos.y - g_LeafMaxFallDist;
+
+        if (currentY < minY) {
+            // Reinicia la animación de la hoja:
+            // - Regresa al árbol
+            // - Resetea fallTime
+            // - Le damos un nuevo startDelay para volver a caer más tarde
+            leaf.fallTime = 0.0f;
+            currentY = leaf.startPos.y;
+
+            // La programamos para que vuelva a caer dentro de un rato
+            // (así se mantiene el efecto de caída secuencial a lo largo del tiempo)
+            float extraWait = 2.0f; // tiempo adicional antes de volver a caer
+            leaf.startDelay = g_LeafGlobalTime + extraWait + g_LeafStartInterval * i;
+
+            // Mientras llega ese tiempo, la siguiente iteración la tratará como "todavía no cae"
+            leaf.pos = leaf.startPos;
+            leaf.rotationAngle = 0.0f;
+            continue;
+        }
+
+        // Balanceo horizontal tipo hoja de árbol (con desfase)
+        float swayX = std::sin(animT * g_LeafOscFreq) * g_LeafOscAmpX;
+        float swayZ = std::cos(animT * g_LeafOscFreq * 0.7f) * g_LeafOscAmpZ;
+
+        // Construimos la posición final
+        leaf.pos = glm::vec3(
+            leaf.startPos.x + swayX,
+            currentY,
+            leaf.startPos.z + swayZ
+        );
+
+        // Rotación suave mientras cae (con desfase)
+        leaf.rotationAngle = std::sin(animT * 2.0f) * g_LeafRotAmp;
+    }
+}
+// ===============================================================
 
 void KeyCallback(GLFWwindow* window, int key, int, int action, int) {
     if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
