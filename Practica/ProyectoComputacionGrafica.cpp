@@ -435,7 +435,7 @@ const float g_LeafStartInterval = 0.8f;
 
 int main() {
     if (!glfwInit()) { return EXIT_FAILURE; }
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo 9. Ronie Celis", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto. Computación Gráfica. Museo De Arte", nullptr, nullptr);
     if (!window) { glfwTerminate(); return EXIT_FAILURE; }
     glfwMakeContextCurrent(window);
     glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
