@@ -4,7 +4,7 @@
 * 318143093
 * 319148204
 * Proyecto Final de laboratorio
-* Fecha de entrega: 12 de octubre de 2025.
+* Fecha de entrega: 19 de octubre de 2025.
 *
 */
 
